@@ -2,8 +2,35 @@ import React from 'react';
 import styled from '@emotion/styled';
 import { useTodoContext } from '../contexts/TodoContext';
 import TodoForm from './TodoForm';
+import { parseDate, isValidDate } from '../utils/helpers';
 
-// 樣式組件
+// 拖拽手柄樣式
+const DragHandle = styled.div`
+  color: ${props => props.theme.colors.textSecondary};
+  cursor: grab;
+  padding: ${props => props.theme.spacing.small};
+  border-radius: ${props => props.theme.radius.small};
+  transition: all ${props => props.theme.transitions.default};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: ${props => props.theme.spacing.small};
+  
+  &:hover {
+    color: ${props => props.theme.colors.primary};
+    background-color: ${props => props.theme.colors.hover};
+  }
+  
+  &:active {
+    cursor: grabbing;
+  }
+
+  &.disabled {
+    color: ${props => props.theme.colors.border};
+    cursor: not-allowed;
+  }
+`;
+
 const TodoItemContainer = styled.div`
   background-color: ${props => props.theme.colors.backgroundSecondary};
   border-radius: ${props => props.theme.radius.medium};
@@ -123,30 +150,31 @@ const Checkbox = styled.input`
 `;
 
 // TodoItem 組件
-const TodoItem = ({ todo }) => {
+const TodoItem = ({ todo, dragHandleProps = {}, isDragging = false }) => {
   const { deleteTodo, toggleTodoCompleted, startEditing, isEditing, cancelEditing } = useTodoContext();
   
   const isEditingThis = isEditing === todo.id;
-    // 格式化創建時間
+  // 格式化創建時間
   const formatDate = (dateString) => {
     try {
-      if (!dateString) return '無日期';
-      
-      // 確保 dateString 是有效的日期字符串
-      const date = new Date(dateString);
-      
-      // 檢查是否為有效的 Date 對象
-      if (isNaN(date.getTime())) {
+      // 使用改進的日期驗證
+      if (!isValidDate(dateString)) {
         console.warn('Invalid date string:', dateString);
+        return '日期格式錯誤';
+      }
+      
+      const date = parseDate(dateString);
+      if (!date) {
         return '日期格式錯誤';
       }
       
       return new Intl.DateTimeFormat('zh-TW', {
         year: 'numeric',
-        month: 'long',
+        month: 'long', 
         day: 'numeric',
         hour: '2-digit',
-        minute: '2-digit'
+        minute: '2-digit',
+        timeZone: 'Asia/Taipei'
       }).format(date);
     } catch (error) {
       console.error('Error formatting date:', error);
@@ -164,8 +192,7 @@ const TodoItem = ({ todo }) => {
   if (isEditingThis) {
     return <TodoForm editTodo={todo} onCancel={cancelEditing} />;
   }
-  
-  return (
+    return (
     <TodoItemContainer completed={todo.completed}>
       <Header completed={todo.completed}>
         <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -177,6 +204,16 @@ const TodoItem = ({ todo }) => {
           <Title completed={todo.completed}>{todo.title}</Title>
         </div>
         <Controls>
+          <DragHandle 
+            {...dragHandleProps}
+            style={{
+              opacity: Object.keys(dragHandleProps).length > 0 ? 1 : 0.5,
+              cursor: Object.keys(dragHandleProps).length > 0 ? 'grab' : 'not-allowed'
+            }}
+            title={Object.keys(dragHandleProps).length > 0 ? "拖拽排序" : "請在自定義排序模式下拖拽"}
+          >
+            ☰
+          </DragHandle>
           <IconButton
             className="edit"
             onClick={() => startEditing(todo.id)}

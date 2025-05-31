@@ -80,7 +80,7 @@ const AppContent = () => {
       <GlobalStyles theme={theme} />
       <Header>
         <Title>個人待辦事項系統</Title>
-        <Description>使用本地儲存的簡單而強大的待辦事項管理工具</Description>
+        <Description>使用本地儲存</Description>
       </Header>
       
       <ThemeSwitcher />
@@ -105,7 +105,7 @@ const AppContent = () => {
       </Main>
       
       <Footer>
-        &copy; {new Date().getFullYear()} 個人待辦事項系統 - 使用 localStorage 儲存所有資料
+          個人待辦事項系統
       </Footer>
     </AppContainer>
   );

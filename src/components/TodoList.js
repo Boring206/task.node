@@ -1,8 +1,26 @@
 import React, { useState } from 'react';
 import styled from '@emotion/styled';
-import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import {
+  restrictToVerticalAxis,
+  restrictToParentElement,
+} from '@dnd-kit/modifiers';
 import { useTodoContext } from '../contexts/TodoContext';
-import TodoItem from './TodoItem';
+import SortableTodoItem from './SortableTodoItem';
+import { parseDate } from '../utils/helpers';
 
 // 樣式組件
 const Container = styled.div`
@@ -103,11 +121,23 @@ const TodoListContainer = styled.div`
 
 // TodoList 組件
 const TodoList = () => {
-  const { todos, filterTodosByTags, getAllTags, reorderTodos } = useTodoContext();
+  const { todos, getAllTags, reorderTodos } = useTodoContext();
   const [selectedTags, setSelectedTags] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all'); // 'all', 'active', 'completed'
-  const [sortBy, setSortBy] = useState('createdAt'); // 'createdAt', 'title'
+  const [sortBy, setSortBy] = useState('order'); // 'createdAt', 'title', 'order'
+
+  // 設置拖拽傳感器
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   // 獲取所有標籤
   const allTags = getAllTags();
@@ -120,13 +150,12 @@ const TodoList = () => {
         : [...prev, tag]
     );
   };
-
   // 清除所有過濾條件
   const clearFilters = () => {
     setSelectedTags([]);
     setSearchTerm('');
     setFilterStatus('all');
-    setSortBy('createdAt');
+    setSortBy('order');
   };
 
   // 過濾和排序待辦事項
@@ -151,56 +180,75 @@ const TodoList = () => {
     // 最後按完成狀態過濾
     .filter(todo => {
       if (filterStatus === 'all') return true;
-      return filterStatus === 'active' ? !todo.completed : todo.completed;
-    })
-    // 排序
+      return filterStatus === 'active' ? !todo.completed : todo.completed;    })    // 排序
     .sort((a, b) => {
       if (sortBy === 'createdAt') {
-        return new Date(b.createdAt) - new Date(a.createdAt);
+        // 使用改進的日期比較
+        const dateA = parseDate(a.createdAt);
+        const dateB = parseDate(b.createdAt);
+        
+        // 如果任一日期無效，將其排到最後
+        if (!dateA && !dateB) return 0;
+        if (!dateA) return 1;
+        if (!dateB) return -1;
+        
+        return dateB - dateA; // 新的在前
       } else if (sortBy === 'title') {
         return a.title.localeCompare(b.title);
+      } else if (sortBy === 'order') {
+        // 按order排序，如果沒有order屬性則使用創建時間
+        const orderA = a.order !== undefined ? a.order : 999999;
+        const orderB = b.order !== undefined ? b.order : 999999;
+        return orderA - orderB;
       }
-      // 其他排序方式...
-      return a.order - b.order;
-    });
+      // 默認按order排序
+      return (a.order || 0) - (b.order || 0);
+    });  // 處理拖拽結束事件
+  const handleDragEnd = (event) => {
+    const { active, over } = event;
 
-  // 處理拖放結束事件
-  const handleDragEnd = (result) => {
-    const { destination, source } = result;
-
-    // 如果沒有目標位置或源位置和目標位置相同，則不做任何更改
-    if (!destination || 
-        (destination.droppableId === source.droppableId && 
-         destination.index === source.index)) {
+    if (!over || active.id === over.id) {
       return;
     }
 
-    // 創建排序後的待辦事項列表副本
-    const reorderedList = Array.from(filteredTodos);
-    const [movedItem] = reorderedList.splice(source.index, 1);
-    reorderedList.splice(destination.index, 0, movedItem);
+    const activeIndex = filteredTodos.findIndex(todo => todo.id === active.id);
+    const overIndex = filteredTodos.findIndex(todo => todo.id === over.id);
 
-    // 更新到全部待辦事項列表並保存到 localStorage
-    const allUpdatedTodos = todos.map(todo => {
-      const matchingReorderedTodo = reorderedList.find(t => t.id === todo.id);
-      if (matchingReorderedTodo) {
-        return {
-          ...todo,
-          order: reorderedList.findIndex(t => t.id === todo.id)
-        };
-      }
-      return todo;
-    });
+    if (activeIndex !== overIndex) {
+      // 創建新的排序後列表
+      const reorderedList = arrayMove(filteredTodos, activeIndex, overIndex);
+      
+      // 為重新排序的項目分配新的order值
+      // 我們需要確保所有項目都有正確的order值
+      const updatedTodos = [...todos];
+      
+      // 更新被拖拽影響的所有項目的order
+      reorderedList.forEach((todo, index) => {
+        const todoIndex = updatedTodos.findIndex(t => t.id === todo.id);
+        if (todoIndex !== -1) {
+          updatedTodos[todoIndex] = {
+            ...updatedTodos[todoIndex],
+            order: index
+          };
+        }
+      });
 
-    reorderTodos(allUpdatedTodos);
+      console.log('拖拽重新排序:', { 
+        activeIndex, 
+        overIndex, 
+        originalTodos: filteredTodos.map(t => ({ id: t.id, order: t.order })),
+        reorderedTodos: reorderedList.map((t, i) => ({ id: t.id, order: i }))
+      });
+      
+      reorderTodos(updatedTodos);
+    }
   };
 
   return (
     <Container>
       <FilterContainer>
         <FilterHeader>
-          <FilterTitle>過濾與搜尋</FilterTitle>
-          {(selectedTags.length > 0 || searchTerm || filterStatus !== 'all' || sortBy !== 'createdAt') && (
+          <FilterTitle>過濾與搜尋</FilterTitle>        {(selectedTags.length > 0 || searchTerm || filterStatus !== 'all' || sortBy !== 'order') && (
             <TagButton onClick={clearFilters}>清除過濾條件</TagButton>
           )}
         </FilterHeader>
@@ -221,11 +269,11 @@ const TodoList = () => {
             <option value="active">未完成</option>
             <option value="completed">已完成</option>
           </FilterSelect>
-          
-          <FilterSelect
+            <FilterSelect
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
           >
+            <option value="order">自定義排序</option>
             <option value="createdAt">最新建立</option>
             <option value="title">按標題排序</option>
           </FilterSelect>
@@ -256,36 +304,25 @@ const TodoList = () => {
               ? '沒有符合條件的待辦事項'
               : '尚未建立待辦事項'}
           </EmptyMessage>
-        ) : (
-          <DragDropContext onDragEnd={handleDragEnd}>
-            <Droppable droppableId="todos">
-              {(provided) => (
-                <div
-                  ref={provided.innerRef}
-                  {...provided.droppableProps}
-                >
-                  {filteredTodos.map((todo, index) => (
-                    <Draggable key={todo.id} draggableId={todo.id} index={index}>
-                      {(provided, snapshot) => (
-                        <div
-                          ref={provided.innerRef}
-                          {...provided.draggableProps}
-                          {...provided.dragHandleProps}
-                          style={{
-                            ...provided.draggableProps.style,
-                            opacity: snapshot.isDragging ? 0.8 : 1
-                          }}
-                        >
-                          <TodoItem todo={todo} />
-                        </div>
-                      )}
-                    </Draggable>
-                  ))}
-                  {provided.placeholder}
-                </div>
-              )}
-            </Droppable>
-          </DragDropContext>
+        ) : (          <DndContext 
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+            modifiers={[restrictToVerticalAxis, restrictToParentElement]}
+          >
+            <SortableContext 
+              items={filteredTodos.map(todo => todo.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              {filteredTodos.map((todo) => (
+                <SortableTodoItem 
+                  key={todo.id} 
+                  todo={todo} 
+                  disabled={sortBy !== 'order'}
+                />
+              ))}
+            </SortableContext>
+          </DndContext>
         )}
       </TodoListContainer>
     </Container>

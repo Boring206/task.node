@@ -1,16 +1,49 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import useLocalStorage from './useLocalStorage';
-import { generateId } from '../utils/helpers';
+import { generateId, createDateString, isValidDate } from '../utils/helpers';
 
 // 管理待辦事項狀態和 CRUD 操作的 Hook
 const useTodos = () => {
   // 使用 localStorage 存儲待辦事項
   const [todos, setTodos] = useLocalStorage('todosApp_todos', []);
-  const [isEditing, setIsEditing] = useState(null);
+  const [isEditing, setIsEditing] = useState(null);  // 數據修復：檢查並修復無效的日期格式和order屬性
+  useEffect(() => {
+    const fixInvalidDates = () => {
+      let needsUpdate = false;
+      const fixedTodos = todos.map((todo, index) => {
+        let updatedTodo = { ...todo };
+        
+        // 修復無效日期
+        if (!isValidDate(todo.createdAt)) {
+          console.warn('修復無效日期:', todo.id, todo.createdAt);
+          needsUpdate = true;
+          updatedTodo.createdAt = createDateString();
+        }
+        
+        // 確保每個todo都有order屬性
+        if (updatedTodo.order === undefined || updatedTodo.order === null) {
+          console.warn('添加缺失的order屬性:', todo.id);
+          needsUpdate = true;
+          updatedTodo.order = index;
+        }
+        
+        return updatedTodo;
+      });
+
+      if (needsUpdate) {
+        console.log('修復了數據不一致問題');
+        setTodos(fixedTodos);
+      }
+    };
+
+    if (todos.length > 0) {
+      fixInvalidDates();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // 只在組件初始化時執行一次
 
   // 獲取所有待辦事項
   const getAllTodos = () => todos;
-
   // 新增待辦事項
   const addTodo = (todo) => {
     const newTodo = {
@@ -18,7 +51,7 @@ const useTodos = () => {
       title: todo.title,
       content: todo.content || '',
       completed: false,
-      createdAt: new Date().toISOString(),
+      createdAt: createDateString(),
       tags: todo.tags || [],
       order: todos.length // 新項目自動排到末尾
     };
@@ -66,15 +99,23 @@ const useTodos = () => {
     });
     return Array.from(tagSet);
   };
-
   // 更新待辦事項順序
   const reorderTodos = (reorderedTodos) => {
-    // 重新分配 order 屬性
-    const todosWithNewOrder = reorderedTodos.map((todo, index) => ({
-      ...todo,
-      order: index
-    }));
-    setTodos(todosWithNewOrder);
+    console.log('reorderTodos called with:', reorderedTodos.map(t => ({ id: t.id, order: t.order, title: t.title })));
+    
+    // 確保所有項目都有有效的order屬性
+    const todosWithValidOrder = reorderedTodos.map((todo, index) => {
+      if (todo.order === undefined || todo.order === null) {
+        return { ...todo, order: index };
+      }
+      return todo;
+    });
+    
+    // 按order排序以確保一致性
+    const sortedTodos = todosWithValidOrder.sort((a, b) => (a.order || 0) - (b.order || 0));
+    
+    console.log('Setting todos to:', sortedTodos.map(t => ({ id: t.id, order: t.order, title: t.title })));
+    setTodos(sortedTodos);
   };
 
   // 編輯狀態管理

@@ -1,6 +1,40 @@
 // 工具函數
 export const generateId = () => Date.now().toString();
 
+// 建立標準化的日期字符串
+export const createDateString = () => {
+  try {
+    return new Date().toISOString();
+  } catch (error) {
+    console.error('Error creating date string:', error);
+    // 使用備用方法
+    return new Date(Date.now()).toISOString();
+  }
+};
+
+// 驗證日期字符串是否有效
+export const isValidDate = (dateString) => {
+  if (!dateString) return false;
+  const date = new Date(dateString);
+  return !isNaN(date.getTime());
+};
+
+// 安全的日期解析
+export const parseDate = (dateString) => {
+  try {
+    if (!dateString) return null;
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) {
+      console.warn('Invalid date string:', dateString);
+      return null;
+    }
+    return date;
+  } catch (error) {
+    console.error('Error parsing date:', error);
+    return null;
+  }
+};
+
 // 儲存待辦事項到 localStorage
 export const saveTodos = (todos) => {
   localStorage.setItem('todosApp_todos', JSON.stringify(todos));

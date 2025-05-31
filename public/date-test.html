@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>日期格式測試</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .result {
+            background: #f8f9fa;
+            padding: 10px;
+            border-left: 4px solid #007bff;
+            margin: 10px 0;
+            font-family: monospace;
+        }
+        .error {
+            border-left-color: #dc3545;
+            background: #f8d7da;
+        }
+        .success {
+            border-left-color: #28a745;
+            background: #d4edda;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h1>日期格式測試工具</h1>
+    
+    <div class="test-section">
+        <h2>1. 基本日期創建測試</h2>
+        <button onclick="testDateCreation()">測試日期創建</button>
+        <div id="date-creation-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>2. 無效日期處理測試</h2>
+        <button onclick="testInvalidDates()">測試無效日期</button>
+        <div id="invalid-dates-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>3. 日期格式化測試</h2>
+        <button onclick="testDateFormatting()">測試日期格式化</button>
+        <div id="date-formatting-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>4. localStorage 數據修復測試</h2>
+        <button onclick="testDataRepair()">測試數據修復</button>
+        <button onclick="clearTestData()">清除測試數據</button>
+        <div id="data-repair-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>5. 實際應用測試</h2>
+        <a href="http://localhost:3000" target="_blank">
+            <button>打開待辦事項應用</button>
+        </a>
+        <p>在實際應用中創建一些待辦事項，然後回到這裡測試數據完整性。</p>
+    </div>
+
+    <script>
+        // 輔助函數
+        function createDateString() {
+            try {
+                return new Date().toISOString();
+            } catch (error) {
+                console.error('Error creating date string:', error);
+                return new Date(Date.now()).toISOString();
+            }
+        }
+
+        function isValidDate(dateString) {
+            if (!dateString) return false;
+            const date = new Date(dateString);
+            return !isNaN(date.getTime());
+        }
+
+        function parseDate(dateString) {
+            try {
+                if (!dateString) return null;
+                const date = new Date(dateString);
+                if (isNaN(date.getTime())) {
+                    console.warn('Invalid date string:', dateString);
+                    return null;
+                }
+                return date;
+            } catch (error) {
+                console.error('Error parsing date:', error);
+                return null;
+            }
+        }
+
+        function formatDate(dateString) {
+            try {
+                if (!isValidDate(dateString)) {
+                    return '日期格式錯誤';
+                }
+                
+                const date = parseDate(dateString);
+                if (!date) {
+                    return '日期格式錯誤';
+                }
+                
+                return new Intl.DateTimeFormat('zh-TW', {
+                    year: 'numeric',
+                    month: 'long', 
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    timeZone: 'Asia/Taipei'
+                }).format(date);
+            } catch (error) {
+                console.error('Error formatting date:', error);
+                return '日期格式錯誤';
+            }
+        }
+
+        // 測試函數
+        function testDateCreation() {
+            const result = document.getElementById('date-creation-result');
+            try {
+                const isoDate = createDateString();
+                const isValid = isValidDate(isoDate);
+                const formatted = formatDate(isoDate);
+                
+                result.innerHTML = `
+                    <div class="result success">
+                        <strong>✓ 日期創建成功</strong><br>
+                        ISO 格式: ${isoDate}<br>
+                        有效性: ${isValid ? '有效' : '無效'}<br>
+                        格式化結果: ${formatted}
+                    </div>
+                `;
+            } catch (error) {
+                result.innerHTML = `
+                    <div class="result error">
+                        <strong>✗ 日期創建失敗</strong><br>
+                        錯誤: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        function testInvalidDates() {
+            const result = document.getElementById('invalid-dates-result');
+            const invalidDates = [
+                undefined, null, '', 'invalid-date', 'NaN', 
+                '2024-13-45', '2024/01/01', 123456789, {}
+            ];
+            
+            let html = '<h3>無效日期測試結果:</h3>';
+            
+            invalidDates.forEach(dateStr => {
+                const isValid = isValidDate(dateStr);
+                const formatted = formatDate(dateStr);
+                const className = isValid ? 'error' : 'success';
+                const icon = isValid ? '✗' : '✓';
+                
+                html += `
+                    <div class="result ${className}">
+                        ${icon} "${dateStr}" -> ${isValid ? '意外有效' : '正確識別為無效'} 
+                        (格式化: ${formatted})
+                    </div>
+                `;
+            });
+            
+            result.innerHTML = html;
+        }
+
+        function testDateFormatting() {
+            const result = document.getElementById('date-formatting-result');
+            const validDates = [
+                '2024-01-15T10:30:00.000Z',
+                '2024-05-31T08:11:11.648Z',
+                createDateString()
+            ];
+            
+            let html = '<h3>有效日期格式化測試:</h3>';
+            
+            validDates.forEach(dateStr => {
+                const formatted = formatDate(dateStr);
+                const isValid = isValidDate(dateStr);
+                
+                html += `
+                    <div class="result ${isValid ? 'success' : 'error'}">
+                        <strong>原始:</strong> ${dateStr}<br>
+                        <strong>格式化:</strong> ${formatted}
+                    </div>
+                `;
+            });
+            
+            result.innerHTML = html;
+        }
+
+        function testDataRepair() {
+            const result = document.getElementById('data-repair-result');
+            
+            // 創建測試數據（包含損壞的日期）
+            const testTodos = [
+                {
+                    id: 'test1',
+                    title: '正常項目',
+                    completed: false,
+                    createdAt: '2024-01-15T10:30:00.000Z',
+                    tags: ['測試'],
+                    order: 0
+                },
+                {
+                    id: 'test2',
+                    title: '損壞日期項目 1',
+                    completed: false,
+                    createdAt: 'invalid-date',
+                    tags: [],
+                    order: 1
+                },
+                {
+                    id: 'test3',
+                    title: '損壞日期項目 2',
+                    completed: false,
+                    createdAt: null,
+                    tags: [],
+                    order: 2
+                }
+            ];
+            
+            // 保存測試數據
+            localStorage.setItem('test_todos', JSON.stringify(testTodos));
+            
+            // 模擬修復過程
+            let needsUpdate = false;
+            const fixedTodos = testTodos.map(todo => {
+                if (!isValidDate(todo.createdAt)) {
+                    needsUpdate = true;
+                    return {
+                        ...todo,
+                        createdAt: createDateString()
+                    };
+                }
+                return todo;
+            });
+            
+            let html = '<h3>數據修復測試結果:</h3>';
+            html += `<div class="result ${needsUpdate ? 'success' : 'error'}">
+                需要修復: ${needsUpdate ? '是' : '否'}<br>
+                修復項目數: ${fixedTodos.filter((_, i) => !isValidDate(testTodos[i].createdAt)).length}
+            </div>`;
+            
+            html += '<h4>修復前後對比:</h4>';
+            testTodos.forEach((todo, index) => {
+                const wasFixed = !isValidDate(todo.createdAt);
+                const className = wasFixed ? 'success' : 'result';
+                
+                html += `
+                    <div class="${className}">
+                        <strong>${todo.title}</strong><br>
+                        修復前: ${todo.createdAt || 'null'}<br>
+                        修復後: ${fixedTodos[index].createdAt}<br>
+                        狀態: ${wasFixed ? '已修復' : '無需修復'}
+                    </div>
+                `;
+            });
+            
+            result.innerHTML = html;
+        }
+
+        function clearTestData() {
+            localStorage.removeItem('test_todos');
+            document.getElementById('data-repair-result').innerHTML = 
+                '<div class="result success">✓ 測試數據已清除</div>';
+        }
+
+        // 頁面加載時執行基本測試
+        window.onload = function() {
+            console.log('日期測試工具已加載');
+            testDateCreation();
+        };
+    </script>
+</body>
+</html>

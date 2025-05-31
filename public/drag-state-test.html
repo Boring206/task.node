@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>拖拽狀態測試</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .test-title {
+            color: #333;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #007bff;
+        }
+        .step {
+            margin: 10px 0;
+            padding: 10px;
+            background: #f8f9fa;
+            border-left: 4px solid #007bff;
+        }
+        .expected {
+            background: #d4edda;
+            border-left-color: #28a745;
+        }
+        .warning {
+            background: #fff3cd;
+            border-left-color: #ffc107;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .code {
+            background: #f8f8f8;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 拖拽狀態持久化測試</h1>
+        
+        <div class="warning">
+            <strong>⚠️ 重要：</strong> 此測試頁面用於驗證拖拽功能的狀態持久化問題修復。
+        </div>
+
+        <div class="test-section">
+            <h2 class="test-title">🎯 問題描述</h2>
+            <div class="step">
+                <strong>問題：</strong> 拖拽項目可以移動，但拖拽結束後項目回到原位置
+            </div>
+            <div class="step">
+                <strong>原因：</strong> handleDragEnd 函數的邏輯錯誤和狀態更新不正確
+            </div>
+            <div class="step">
+                <strong>修復：</strong> 重寫拖拽邏輯和狀態管理函數
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2 class="test-title">🔍 測試步驟</h2>
+            <div class="step">
+                <strong>1.</strong> 打開主應用 (http://localhost:3001)
+            </div>
+            <div class="step">
+                <strong>2.</strong> 創建至少 3-4 個待辦事項
+            </div>
+            <div class="step">
+                <strong>3.</strong> 確保排序模式為 "自定義排序"
+            </div>
+            <div class="step">
+                <strong>4.</strong> 拖拽第一個項目到第三個位置
+            </div>
+            <div class="step expected">
+                <strong>預期結果：</strong> 項目應該保持在新位置，不會回到原位置
+            </div>
+            <div class="step">
+                <strong>5.</strong> 刷新頁面驗證順序是否持久化
+            </div>
+            <div class="step expected">
+                <strong>預期結果：</strong> 刷新後順序應該保持不變
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2 class="test-title">🛠️ 修復內容</h2>
+            
+            <h3>1. TodoList.js - handleDragEnd 函數</h3>
+            <div class="code">
+修復前問題：
+- 使用了複雜的映射邏輯可能導致狀態更新錯誤
+- order 屬性分配不正確
+
+修復後：
+- 簡化拖拽邏輯，直接更新原有todos數組
+- 確保order屬性正確分配
+- 添加詳細的調試日誌
+            </div>
+
+            <h3>2. useTodos.js - reorderTodos 函數</h3>
+            <div class="code">
+修復前問題：
+- 重複分配order屬性
+- 沒有驗證order屬性的有效性
+
+修復後：
+- 添加order屬性驗證
+- 確保todos按order排序
+- 添加調試日誌追蹤狀態變化
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2 class="test-title">🎮 互動測試</h2>
+            <div class="step">
+                <strong>調試信息：</strong> 打開瀏覽器開發者工具的控制台，拖拽時會看到詳細的日誌信息
+            </div>
+            <div class="step">
+                <strong>狀態檢查：</strong> 可以在控制台執行以下命令檢查localStorage：
+            </div>
+            <div class="code">
+localStorage.getItem('todosApp_todos')
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2 class="test-title">✅ 驗證清單</h2>
+            <div class="step">□ 拖拽時項目可以移動</div>
+            <div class="step">□ 拖拽結束後項目保持在新位置</div>
+            <div class="step">□ 控制台顯示正確的調試信息</div>
+            <div class="step">□ localStorage中的order屬性正確更新</div>
+            <div class="step">□ 頁面刷新後順序保持不變</div>
+            <div class="step">□ 只有在"自定義排序"模式下才能拖拽</div>
+        </div>
+
+        <div class="test-section">
+            <h2 class="test-title">🚀 開始測試</h2>
+            <div class="step">
+                <a href="http://localhost:3001" target="_blank" style="color: #007bff; text-decoration: none; font-weight: bold;">
+                    → 打開主應用進行測試
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 檢查localStorage中的todos數據
+        function checkTodosData() {
+            try {
+                const todos = JSON.parse(localStorage.getItem('todosApp_todos') || '[]');
+                console.log('當前todos數據:', todos);
+                console.log('Order屬性檢查:', todos.map(t => ({id: t.id, title: t.title, order: t.order})));
+                return todos;
+            } catch (error) {
+                console.error('無法讀取todos數據:', error);
+                return [];
+            }
+        }
+
+        // 每5秒檢查一次數據變化
+        setInterval(() => {
+            const todos = checkTodosData();
+            if (todos.length > 0) {
+                document.title = `拖拽測試 (${todos.length} 項目)`;
+            }
+        }, 5000);
+
+        console.log('拖拽狀態測試頁面已加載');
+        console.log('使用 checkTodosData() 函數檢查當前數據');
+    </script>
+</body>
+</html>

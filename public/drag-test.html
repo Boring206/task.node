@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>拖拽功能測試</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .drag-item {
+            background: #e3f2fd;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            cursor: grab;
+            border-left: 4px solid #2196f3;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .drag-item:active {
+            cursor: grabbing;
+        }
+        .drag-handle {
+            cursor: grab;
+            padding: 5px;
+            color: #666;
+            font-weight: bold;
+        }
+        .drag-handle:hover {
+            color: #2196f3;
+            background: rgba(33, 150, 243, 0.1);
+            border-radius: 3px;
+        }
+        .instructions {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .status {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <h1>拖拽功能測試頁面</h1>
+    
+    <div class="instructions">
+        <h3>測試說明：</h3>
+        <ol>
+            <li>檢查React應用是否正在運行（端口3000或其他）</li>
+            <li>在主應用中，確保排序方式設置為「自定義排序」</li>
+            <li>嘗試拖拽待辦事項進行重新排序</li>
+            <li>檢查瀏覽器控制台是否有錯誤信息</li>
+        </ol>
+    </div>
+
+    <div class="test-section">
+        <h3>基本HTML5拖拽測試</h3>
+        <p>以下項目支持基本的HTML5拖拽（用於測試瀏覽器拖拽支持）：</p>
+        
+        <div id="basic-drag-container">
+            <div class="drag-item" draggable="true" data-id="1">
+                <span class="drag-handle">☰</span>
+                <span>項目 1 - 拖拽我試試</span>
+            </div>
+            <div class="drag-item" draggable="true" data-id="2">
+                <span class="drag-handle">☰</span>
+                <span>項目 2 - 我也可以拖拽</span>
+            </div>
+            <div class="drag-item" draggable="true" data-id="3">
+                <span class="drag-handle">☰</span>
+                <span>項目 3 - 拖拽排序測試</span>
+            </div>
+        </div>
+        
+        <div id="drag-status" class="status">
+            準備測試拖拽功能...
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h3>React Beautiful DnD檢查</h3>
+        <p>檢查React應用中的拖拽實現：</p>
+        <ul>
+            <li>檢查react-beautiful-dnd版本兼容性</li>
+            <li>檢查React版本與react-beautiful-dnd的兼容性</li>
+            <li>檢查拖拽事件處理器</li>
+            <li>檢查CSS樣式是否阻止拖拽</li>
+        </ul>
+        
+        <div id="react-status" class="status">
+            <strong>已知問題：</strong><br>
+            React 19 與 react-beautiful-dnd 可能存在兼容性問題。<br>
+            建議解決方案：
+            <ol>
+                <li>降級到React 18</li>
+                <li>或使用替代拖拽庫如 @dnd-kit/core</li>
+                <li>或等待react-beautiful-dnd更新支持React 19</li>
+            </ol>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h3>快速檢查列表</h3>
+        <div id="checklist">
+            <label><input type="checkbox" id="check1"> React應用正在運行</label><br>
+            <label><input type="checkbox" id="check2"> 排序模式設為「自定義排序」</label><br>
+            <label><input type="checkbox" id="check3"> 瀏覽器支持拖拽（上方基本測試有效）</label><br>
+            <label><input type="checkbox" id="check4"> 控制台無錯誤信息</label><br>
+            <label><input type="checkbox" id="check5"> 拖拽手柄顯示正常</label><br>
+        </div>
+    </div>
+
+    <script>
+        // 基本HTML5拖拽測試
+        let draggedElement = null;
+        const container = document.getElementById('basic-drag-container');
+        const status = document.getElementById('drag-status');
+
+        container.addEventListener('dragstart', (e) => {
+            draggedElement = e.target;
+            e.target.style.opacity = '0.5';
+            status.textContent = '開始拖拽...';
+            status.className = 'status';
+        });
+
+        container.addEventListener('dragend', (e) => {
+            e.target.style.opacity = '1';
+            draggedElement = null;
+            status.textContent = '拖拽結束';
+        });
+
+        container.addEventListener('dragover', (e) => {
+            e.preventDefault();
+        });
+
+        container.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const afterElement = getDragAfterElement(container, e.clientY);
+            
+            if (afterElement == null) {
+                container.appendChild(draggedElement);
+            } else {
+                container.insertBefore(draggedElement, afterElement);
+            }
+            
+            status.textContent = '拖拽成功！項目已重新排序。';
+            status.className = 'status';
+        });
+
+        function getDragAfterElement(container, y) {
+            const draggableElements = [...container.querySelectorAll('.drag-item:not(.dragging)')];
+            
+            return draggableElements.reduce((closest, child) => {
+                const box = child.getBoundingClientRect();
+                const offset = y - box.top - box.height / 2;
+                
+                if (offset < 0 && offset > closest.offset) {
+                    return { offset: offset, element: child };
+                } else {
+                    return closest;
+                }
+            }, { offset: Number.NEGATIVE_INFINITY }).element;
+        }
+
+        // 檢查React應用狀態
+        function checkReactApp() {
+            fetch('http://localhost:3000')
+                .then(response => {
+                    if (response.ok) {
+                        document.getElementById('check1').checked = true;
+                        console.log('React應用運行正常');
+                    }
+                })
+                .catch(error => {
+                    console.log('React應用未運行或端口不是3000');
+                });
+        }
+
+        // 頁面加載時檢查
+        window.onload = () => {
+            checkReactApp();
+            
+            // 檢查瀏覽器拖拽支持
+            if ('draggable' in document.createElement('div')) {
+                status.textContent += ' 瀏覽器支持拖拽功能。';
+                document.getElementById('check3').checked = true;
+            } else {
+                status.textContent += ' 瀏覽器不支持拖拽功能！';
+                status.className = 'status error';
+            }
+        };
+    </script>
+</body>
+</html>
